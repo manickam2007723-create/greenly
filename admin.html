@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Admin Panel</title>
+    <link rel="stylesheet" href="admin.css">
+    <!-- Load Supabase JS Client before our custom scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-analytics.js";
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
+
+        // Your web app's Firebase configuration
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+            apiKey: "AIzaSyCNYxP2v-ly7pe4m5yfJwfV2Ya8RfnIJL0",
+            authDomain: "greenly-3d855.firebaseapp.com",
+            projectId: "greenly-3d855",
+            storageBucket: "greenly-3d855.firebasestorage.app",
+            messagingSenderId: "856155505774",
+            appId: "1:856155505774:web:56ce47bafc2542fb1e527f",
+            measurementId: "G-CKN38JK3HC"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+    </script>
+    <script src="https://unpkg.com/feather-icons"></script>
+</head>
+
+<body>
+    <div id="adminLoginOverlay"
+        style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; display:flex; justify-content:center; align-items:center;">
+
+        <div style="background:white; padding:2rem; border-radius:12px; text-align:center; max-width:400px; width:90%;">
+            <h2 style="color: #333; margin-bottom: 0.5rem;">Admin Access</h2>
+            <p style="margin-bottom:1.5rem; color:#666;">Enter your authorized admin email and password.</p>
+            <input type="email" id="adminEmail" placeholder="Admin Email"
+                style="padding:0.75rem; width:100%; margin-bottom:1rem; border: 1px solid #ccc; border-radius: 6px;"
+                autocomplete="off">
+            <input type="password" id="adminPassword" placeholder="Password"
+                style="padding:0.75rem; width:100%; margin-bottom:1rem; border: 1px solid #ccc; border-radius: 6px;"
+                onkeydown="if(event.key === 'Enter') checkAdminPassword()">
+            <button onclick="checkAdminPassword()" class="btn"
+                style="width:100%; justify-content:center; padding: 0.75rem;"><i data-feather="unlock"></i> Unlock
+                Panel</button>
+            <p id="adminError" style="color:#e74c3c; margin-top:1rem; display:none; font-weight: bold;">Incorrect
+                password. Try again.</p>
+        </div>
+    </div>
+    <div class="admin-container">
+        <aside class="sidebar">
+            <h2>Admin<span style="color:#f1c40f">Panel</span></h2>
+            <ul>
+                <li id="menu-products" class="active" onclick="switchTab('products')" style="cursor: pointer;"><i
+                        data-feather="box"></i> Products</li>
+                <li id="menu-orders" onclick="switchTab('orders')" style="cursor: pointer;"><i
+                        data-feather="shopping-bag"></i> Orders</li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <header>
+                <h1>Manage Inventory</h1>
+                <p>Changes here will reflect on your main website instantly via Supabase.</p>
+            </header>
+
+            <section class="add-product-section card">
+                <h2><i data-feather="plus-circle"></i> Add New Product</h2>
+                <form id="addProductForm">
+                    <div class="form-group">
+                        <label for="pName">Product Name</label>
+                        <input type="text" id="pName" required placeholder="e.g. Organic Soap">
+                    </div>
+                    <div class="form-group">
+                        <label for="pCategory">Category</label>
+                        <input type="text" id="pCategory" required placeholder="e.g. Wellness, Skincare, Tech...">
+                    </div>
+                    <div class="form-group">
+                        <label for="pPrice">Price (₹)</label>
+                        <input type="number" step="0.01" id="pPrice" required placeholder="99">
+                    </div>
+                    <div class="form-group">
+                        <label for="pStock">Stock / Pieces Available</label>
+                        <input type="number" id="pStock" required min="1" value="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="pDesc">Description</label>
+                        <textarea id="pDesc" rows="3" required placeholder="Describe the item..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="pImage">Product Image</label>
+                        <input type="file" id="pImageFile" accept="image/*" style="margin-bottom: 0.5rem;">
+                        <div style="text-align: center; margin: 0.5rem 0;">OR</div>
+                        <input type="url" id="pImage" placeholder="https://example.com/image.jpg">
+                        <small>Upload a photo directly or provide an open-source image URL.</small>
+                    </div>
+
+                    <button type="submit" id="submitBtn" class="btn"><i data-feather="save"></i> Publish Product to
+                        Store</button>
+                </form>
+            </section>
+
+            <section class="manage-products-section card" style="margin-top: 2rem;">
+                <h2><i data-feather="list"></i> Manage Products</h2>
+                <div id="adminProductsList" style="margin-top: 1.5rem;">
+                    <p style="color: #666; text-align: center;">Loading products...</p>
+                </div>
+            </section>
+
+            <section id="ordersSection" class="card" style="display:none;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <h2 style="margin: 0;"><i data-feather="shopping-bag"></i> Customer Orders</h2>
+                    <div style="flex: 1; min-width: 250px; max-width: 400px; position: relative;">
+                        <input type="text" id="adminOrderSearch" oninput="loadOrders()"
+                            placeholder="Search by Order ID, Email, or Item..."
+                            style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-family: inherit;">
+                        <i data-feather="search"
+                            style="position: absolute; left: 10px; top: 12px; color: var(--text-muted); width: 18px; height: 18px;"></i>
+                    </div>
+                </div>
+                <div id="ordersList" style="margin-top: 1.5rem;">
+                    <!-- Orders dynamically loaded here -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Load config and admin logic -->
+    <!-- <script src="supabaseClient.js"></script> -->
+    <script src="admin.js"></script>
+    <script>feather.replace();</script>
+</body>
+
+</html>

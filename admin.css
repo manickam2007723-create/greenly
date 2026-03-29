@@ -1,0 +1,125 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Roboto, Arial, sans-serif; background-color: #f4f6f9; color: #333; }
+
+.admin-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 250px;
+    background-color: #1f7a43;
+    color: white;
+    padding: 2rem 1rem;
+}
+
+.sidebar h2 {
+    margin-bottom: 2rem;
+    font-size: 1.5rem;
+    text-align: center;
+    font-style: italic;
+}
+
+.sidebar li {
+    list-style: none;
+    padding: 1rem;
+    background-color: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.main-content {
+    flex: 1;
+    padding: 2rem;
+}
+
+header h1 { margin-bottom: 0.5rem; }
+header p { color: #666; margin-bottom: 2rem; }
+
+.card {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    max-width: 600px;
+}
+
+.card h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    color: #1f7a43;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 1rem;
+}
+
+.form-group { margin-bottom: 1.2rem; }
+.form-group label { display: block; margin-bottom: 0.4rem; font-weight: bold; font-size: 0.9rem;}
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: inherit;
+}
+.form-group small { color: #777; display: block; margin-top: 0.3rem;}
+
+.btn {
+    background-color: #ff9f00;
+    color: white;
+    border: none;
+    padding: 1rem;
+    width: 100%;
+    font-size: 1rem;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    transition: opacity 0.2s;
+}
+.btn:hover { opacity: 0.9; }
+.btn:disabled { background-color: #ccc; cursor: not-allowed; }
+
+/* Responsive Mobile Layout for Admin */
+@media (max-width: 768px) {
+    .admin-container {
+        flex-direction: column;
+    }
+    .sidebar {
+        width: 100%;
+        padding: 1rem;
+    }
+    .sidebar h2 {
+        margin-bottom: 1rem;
+    }
+    .sidebar ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: center;
+    }
+    .sidebar li {
+        width: auto;
+        padding: 0.5rem 1rem;
+        margin-bottom: 0;
+    }
+    .main-content {
+        padding: 1rem;
+    }
+    .card {
+        padding: 1.5rem 1rem;
+        max-width: 100%;
+    }
+    
+    #adminLoginOverlay > div {
+        padding: 1.5rem 1rem !important;
+    }
+}
