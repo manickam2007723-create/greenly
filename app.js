@@ -238,8 +238,6 @@ window.handleDirectCheckout = async (e) => {
   };
 
 
-  // Call it when the page starts
-  loadProducts();
 
   // 1. Try hitting Supabase
   if (window.supabase && typeof SUPABASE_URL !== 'undefined' && !SUPABASE_URL.includes('YOUR_SUPABASE')) {
