@@ -178,6 +178,27 @@ window.buyNow = (id) => {
   navigate('checkout-direct');
 };
 
+window.updateCheckoutTotal = () => {
+    let grandTotal = 0;
+    const rows = document.querySelectorAll('.checkout-item-row');
+    rows.forEach(row => {
+        const id = row.dataset.id;
+        const price = parseFloat(row.dataset.price);
+        const qtyInput = document.getElementById(`qty_${id}`);
+        const qty = parseInt(qtyInput.value) || 1;
+        
+        const itemTotal = price * qty;
+        grandTotal += itemTotal;
+        row.querySelector('.chk-item-total').innerText = '₹' + itemTotal.toFixed(2);
+    });
+    document.getElementById('chk-grand-total').innerText = '₹' + grandTotal.toFixed(2);
+    
+    // update button text
+    const btn = document.querySelector('#checkout-form button[type="submit"]');
+    if (btn) btn.innerHTML = `<i data-feather="lock"></i> Place Order - ₹${grandTotal.toFixed(2)}`;
+    if (window.feather) feather.replace();
+};
+
 window.viewProduct = (id) => {
   currentCheckoutItem = products.find(p => p.id == id);
   if (currentCheckoutItem) {
@@ -223,7 +244,11 @@ window.handleDirectCheckout = async (e) => {
     return;
   }
 
-  const itemsToOrder = currentCheckoutItem ? [currentCheckoutItem] : [...cart];
+  const itemsToOrder = (currentCheckoutItem ? [currentCheckoutItem] : [...cart]).map(i => {
+     const qtyInput = document.getElementById(`qty_${i.id}`);
+     const newQty = qtyInput ? (parseInt(qtyInput.value) || 1) : i.quantity;
+     return { ...i, quantity: newQty };
+  });
   const total = itemsToOrder.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2);
 
   const newOrder = {
@@ -470,14 +495,17 @@ const views = {
             <h3>Order Summary</h3>
             <div style="margin-top: 1.5rem;">
               ${items.map(item => `
-                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.5rem;">
-                  <span>${item.quantity}x ${item.name}</span>
-                  <span style="font-weight: bold;">₹${(item.price * item.quantity).toFixed(2)}</span>
+                <div class="checkout-item-row" data-id="${item.id}" data-price="${item.price}" style="display: flex; justify-content: space-between; margin-bottom: 1rem; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.5rem; align-items: center;">
+                  <div style="display:flex; align-items:center; gap: 0.5rem;">
+                    <input type="number" id="qty_${item.id}" value="${item.quantity}" min="1" max="${item.stock || 99}" style="width: 50px; padding: 0.2rem 0.4rem; border-radius: 4px; border: 1px solid var(--border-color);" onchange="window.updateCheckoutTotal()" onkeyup="window.updateCheckoutTotal()">
+                    <span style="font-size: 0.95rem;">${item.name}</span>
+                  </div>
+                  <span class="chk-item-total" style="font-weight: bold;">₹${(item.price * item.quantity).toFixed(2)}</span>
                 </div>
               `).join('')}
               <div style="display: flex; justify-content: space-between; margin-top: 1.5rem; font-size: 1.25rem;">
                 <strong>Grand Total</strong>
-                <strong style="color: var(--accent-color);">₹${total}</strong>
+                <strong id="chk-grand-total" style="color: var(--accent-color);">₹${total}</strong>
               </div>
             </div>
           </div>
