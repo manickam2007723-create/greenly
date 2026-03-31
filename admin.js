@@ -16,22 +16,25 @@ function startSecurityTimer() {
     }, 60000);
 }
 
-function checkAdminPassword() {
+function checkAdminEmail() {
     const email = document.getElementById('adminEmail').value.trim().toLowerCase();
-    const pwd = document.getElementById('adminPassword').value;
     const errorEl = document.getElementById('adminError');
-
-    if (!email || !pwd) {
-        errorEl.textContent = "Email and Password are required.";
-        errorEl.style.display = 'block';
-        return;
-    }
-
-    if (email !== "manickam2007723@gmail.com") {
+    if (email === "manickam2007723@gmail.com") {
+        document.getElementById('adminEmail').style.display = 'none';
+        document.getElementById('adminEmailBtn').style.display = 'none';
+        document.getElementById('adminPassword').style.display = 'block';
+        document.getElementById('adminPassBtn').style.display = 'flex';
+        errorEl.style.display = 'none';
+        document.getElementById('adminPassword').focus();
+    } else {
         errorEl.textContent = "Unauthorized email address. Only the main admin can login.";
         errorEl.style.display = 'block';
-        return;
     }
+}
+
+function checkAdminPassword() {
+    const errorEl = document.getElementById('adminError');
+    const pwd = document.getElementById('adminPassword').value;
 
     if (pwd !== "manickam@2007") {
         errorEl.textContent = "Incorrect password. Try again.";
@@ -45,6 +48,8 @@ function checkAdminPassword() {
     errorEl.style.display = 'none';
     startSecurityTimer();
     loadProducts();
+    // Pre-load orders so realtime listener activates
+    loadOrders();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -271,6 +276,16 @@ async function loadOrders() {
             allOrders = data || [];
         } catch (err) {
             console.error("Failed to fetch admin orders from supabase", err);
+        }
+
+        if (!window.isOrderChannelActive) {
+            window.isOrderChannelActive = true;
+            supabase.channel('admin:orders')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
+                    console.log("Order update detected, auto-refreshing...", payload);
+                    loadOrders(); // Auto reload the admin orders list!
+                })
+                .subscribe();
         }
     } else {
         allOrders = JSON.parse(localStorage.getItem('ecoMart_orders')) || [];

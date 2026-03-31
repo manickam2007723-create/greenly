@@ -44,13 +44,19 @@
             <p style="margin-bottom:1.5rem; color:#666;">Enter your authorized admin email and password.</p>
             <input type="email" id="adminEmail" placeholder="Admin Email"
                 style="padding:0.75rem; width:100%; margin-bottom:1rem; border: 1px solid #ccc; border-radius: 6px;"
-                autocomplete="off">
+                autocomplete="off" onkeydown="if(event.key === 'Enter') checkAdminEmail()">
+            
+            <button id="adminEmailBtn" onclick="checkAdminEmail()" class="btn"
+                style="width:100%; justify-content:center; padding: 0.75rem;">Next</button>
+
             <input type="password" id="adminPassword" placeholder="Password"
-                style="padding:0.75rem; width:100%; margin-bottom:1rem; border: 1px solid #ccc; border-radius: 6px;"
+                style="padding:0.75rem; width:100%; margin-bottom:1rem; border: 1px solid #ccc; border-radius: 6px; display:none;"
                 onkeydown="if(event.key === 'Enter') checkAdminPassword()">
-            <button onclick="checkAdminPassword()" class="btn"
-                style="width:100%; justify-content:center; padding: 0.75rem;"><i data-feather="unlock"></i> Unlock
+            
+            <button id="adminPassBtn" onclick="checkAdminPassword()" class="btn"
+                style="width:100%; justify-content:center; padding: 0.75rem; display:none;"><i data-feather="unlock"></i> Unlock
                 Panel</button>
+            
             <p id="adminError" style="color:#e74c3c; margin-top:1rem; display:none; font-weight: bold;">Incorrect
                 password. Try again.</p>
         </div>

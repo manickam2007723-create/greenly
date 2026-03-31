@@ -252,7 +252,7 @@ window.handleDirectCheckout = async (e) => {
   const total = itemsToOrder.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2);
 
   const newOrder = {
-    id: 'ORD-' + Math.floor(Math.random() * 1000000),
+    id: Math.floor(Math.random() * 2000000000), // numeric ID to satisfy bigint
     date: new Date().toLocaleDateString(),
     items: itemsToOrder,
     total,
