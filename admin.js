@@ -318,6 +318,7 @@ async function loadOrders() {
                             Order #${order.id}
                             ${order.status === 'Cancelled' ? `<span style="font-size: 0.75rem; background: #ff4757; color: white; padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">Cancelled</span>` : ''}
                         </h3>
+                        ${order.status === 'Cancelled' && order.cancelReason ? `<div style="font-size: 0.85rem; color: #ff4757; margin-top: 0.4rem; padding-bottom: 0.2rem;"><strong>Cancel Reason:</strong> ${order.cancelReason}</div>` : ''}
                         <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.2rem;">
                             <i data-feather="mail" style="width: 14px; height: 14px; vertical-align: middle;"></i> 
                             <strong style="color: var(--primary-color);">${orderEmail}</strong>

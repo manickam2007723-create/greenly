@@ -239,7 +239,7 @@ window.handleDirectCheckout = async (e) => {
   const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
 
   if (paymentMethod === 'UPI' && !document.getElementById('chk_upi').value) {
-    showToast('Please enter your UPI ID');
+    showToast('Please enter your UPI Transaction ID');
     if (submitBtn) { submitBtn.innerHTML = submitBtn.dataset.originalHtml; submitBtn.disabled = false; }
     return;
   }
@@ -290,9 +290,16 @@ window.handleDirectCheckout = async (e) => {
 };
 
 window.cancelOrder = async (id) => {
+  const reason = prompt('Please enter a reason for cancellation:');
+  if (reason === null || reason.trim() === '') {
+    showToast('Cancellation aborted. Reason is required.');
+    return;
+  }
+
   const order = orders.find(o => o.id === id);
   if (order) {
     order.status = 'Cancelled';
+    order.cancelReason = reason.trim();
     saveState();
     showToast('Order ' + id + ' has been cancelled');
     renderView('orders');
@@ -480,9 +487,11 @@ const views = {
               </div>
               
               <div class="form-group" id="upi-container" style="display: none; background: rgba(0,0,0,0.05); padding: 1rem; border-radius: 8px;">
-                <label>UPI ID</label>
-                <input type="text" id="chk_upi" class="form-control" placeholder="username@upi">
-                <small style="color: var(--text-muted); display: block; margin-top: 0.5rem;">You will receive a payment request on your UPI app.</small>
+                <p style="margin-bottom: 1rem;">Click below to pay via any UPI app. Then enter the Transaction ID.</p>
+                <a href="upi://pay?pa=storemanager@upi&pn=EcoMart&am=${total}&cu=INR" class="btn btn-secondary" style="display: block; text-align: center; margin-bottom: 1rem; text-decoration: none; padding: 0.8rem;">Open UPI App to Pay ₹${total}</a>
+                <label>Transaction ID / UTR</label>
+                <input type="text" id="chk_upi" class="form-control" placeholder="Enter Transaction ID after payment">
+                <small style="color: var(--text-muted); display: block; margin-top: 0.5rem;">Enter the Transaction ID to confirm your payment.</small>
               </div>
 
               <button type="submit" class="btn" style="width: 100%; justify-content: center; padding: 1rem; margin-top: 2rem;">
@@ -560,7 +569,7 @@ const views = {
           </div>
           <div>
             ${order.status === 'Cancelled' ?
-        `<span style="color: #ff4757; font-weight: bold;"><i data-feather="x-circle" style="width: 16px; height: 16px; vertical-align: middle;"></i> Order Cancelled</span>` :
+        `<span style="color: #ff4757; font-weight: bold;"><i data-feather="x-circle" style="width: 16px; height: 16px; vertical-align: middle;"></i> Cancelled</span> ${order.cancelReason ? `<br/><small style="color: #666; font-size: 0.85rem; font-weight: normal;">Reason: ${order.cancelReason}</small>` : ''}` :
         `<button class="btn btn-secondary" style="color: #ff4757; border-color: #ff4757; padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="cancelOrder('${order.id}')">Cancel Order</button>`
       }
           </div>
