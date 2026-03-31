@@ -148,6 +148,12 @@ document.getElementById('addProductForm').addEventListener('submit', async (e) =
 
                 processProduct(compressedBase64);
             };
+            img.onerror = () => {
+                alert("Invalid or unsupported image format. Please use JPEG, PNG, or WebP.");
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i data-feather="save"></i> Publish Product to Store`;
+                if (window.feather) feather.replace();
+            };
             img.src = event.target.result;
         };
         reader.readAsDataURL(imageFile);
