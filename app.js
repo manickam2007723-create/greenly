@@ -617,7 +617,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let fetchedProducts = [];
   if (window.supabase && typeof SUPABASE_URL !== 'undefined' && !SUPABASE_URL.includes('YOUR_SUPABASE')) {
-    const { data, error } = await supabase.from('products').select('*');
+    const { data, error } = await supabase.from('products').select('*').limit(10);
     if (error) {
       console.error("Supabase Error:", error);
       window.supabaseErrorMsg = error.message;
@@ -633,8 +633,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log("New product instantly synced!", payload.new);
         fetchedProducts.unshift(payload.new);
 
-        const curLocalProducts = JSON.parse(localStorage.getItem('ecoMart_local_products')) || [];
-        products = [...fetchedProducts, ...curLocalProducts, ...(window.initialProducts || [])];
+        const deletedInitial = JSON.parse(localStorage.getItem('ecoMart_deleted_initial') || '[]');
+        const validInitial = (window.initialProducts || []).filter(p => !deletedInitial.includes(p.id));
+        products = [...fetchedProducts, ...validInitial].slice(0, 10);
         saveState();
 
         // Re-render the homepage if they are currently looking at it
@@ -650,7 +651,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Set the single source of truth to Supabase and defaults
-  products = [...fetchedProducts, ...(window.initialProducts || [])];
+  const deletedInitial = JSON.parse(localStorage.getItem('ecoMart_deleted_initial') || '[]');
+  const validInitial = (window.initialProducts || []).filter(p => !deletedInitial.includes(p.id));
+  products = [...fetchedProducts, ...validInitial].slice(0, 10);
 
   saveState();
   updateUIState();

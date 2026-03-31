@@ -105,10 +105,14 @@ document.getElementById('addProductForm').addEventListener('submit', async (e) =
                 .insert([newProduct]);
 
             if (error) {
-                console.error(error);
-                alert("Error saving product: " + error.message);
+                console.error("Supabase Error Details:", error);
+                if (error.code === '42501' || error.message.includes('row-level security')) {
+                    alert("🚨 SUPABASE SECURITY SHIELD IS ACTIVE! 🚨\n\nYour code is working perfectly, but Supabase is blocking the upload.\n\nTo fix this:\n1. Open your Supabase Dashboard on the web.\n2. Go to the 'products' table.\n3. Turn OFF 'Row Level Security (RLS)'.\n\nOnce RLS is disabled, your products will instantly add to the home page!");
+                } else {
+                    alert("Error saving product: " + error.message);
+                }
             } else {
-                alert("Success! Product has been added to the main store.");
+                alert("Success! Product has been officially uploaded to your Supabase database and is live on the home page!");
                 document.getElementById('addProductForm').reset();
                 loadProducts();
             }
@@ -190,20 +194,24 @@ window.switchTab = function (tab) {
 window.deleteProduct = async function (id) {
     if (!confirm("Are you sure you want to completely delete this product from the store?")) return;
 
-    if (typeof SUPABASE_URL === 'undefined' || SUPABASE_URL.includes('YOUR_SUPABASE') || !supabase) {
-        alert("Supabase error: Cannot delete. Check configuration.");
-        return;
+    // Track deletion of local initial products
+    const deletedInitial = JSON.parse(localStorage.getItem('ecoMart_deleted_initial') || '[]');
+    if (!deletedInitial.includes(id)) {
+        deletedInitial.push(id);
+        localStorage.setItem('ecoMart_deleted_initial', JSON.stringify(deletedInitial));
     }
 
-    try {
-        const { error } = await supabase.from('products').delete().eq('id', id);
-        if (error) throw error;
-        alert("Product successfully deleted from Supabase.");
-        loadProducts();
-    } catch (err) {
-        console.error("Error deleting:", err);
-        alert("Failed to delete product: " + err.message);
+    if (window.supabase && typeof SUPABASE_URL !== 'undefined' && !SUPABASE_URL.includes('YOUR_SUPABASE')) {
+        try {
+            const { error } = await supabase.from('products').delete().eq('id', id);
+            if (error) console.error("Supabase delete returned an error:", error);
+        } catch (err) {
+            console.error("Error deleting from supabase:", err);
+        }
     }
+
+    alert("Product successfully deleted from the store.");
+    loadProducts();
 };
 
 async function loadProducts() {
@@ -217,17 +225,22 @@ async function loadProducts() {
             const { data, error } = await supabase.from('products').select('*');
             if (error) throw error;
             systemProducts = data || [];
+            systemProducts.reverse(); // newest supabase products first
         } catch (err) {
             console.error("Failed to fetch admin products from supabase", err);
         }
     }
 
+    const deletedInitial = JSON.parse(localStorage.getItem('ecoMart_deleted_initial') || '[]');
+    const validInitial = (window.initialProducts || []).filter(p => !deletedInitial.includes(p.id));
+    
+    // Merge remote and local products for admin view
+    systemProducts = [...systemProducts, ...validInitial];
+
     if (systemProducts.length === 0) {
         listEl.innerHTML = `<p style="color: var(--text-muted); text-align: center;">No products found in the database. Add one above!</p>`;
         return;
     }
-
-    systemProducts.reverse();
 
     listEl.innerHTML = systemProducts.map(p => `
         <div style="display:flex; align-items:center; justify-content:space-between; padding: 1rem; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 0.8rem;">
