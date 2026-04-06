@@ -93,6 +93,7 @@ document.getElementById('addProductForm').addEventListener('submit', async (e) =
             price: parseFloat(document.getElementById('pPrice').value),
             stock: parseInt(document.getElementById('pStock').value) || 0,
             description: document.getElementById('pDesc').value,
+            is_biodegradable: document.getElementById('pBio').value === 'true',
             image: finalImageStr
         };
 

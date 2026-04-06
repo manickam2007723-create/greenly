@@ -102,6 +102,13 @@
                         <textarea id="pDesc" rows="3" required placeholder="Describe the item..."></textarea>
                     </div>
                     <div class="form-group">
+                        <label for="pBio">Classification (SDG 12)</label>
+                        <select id="pBio" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-family: inherit;">
+                            <option value="true">Biodegradable</option>
+                            <option value="false">Non-biodegradable</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label for="pImage">Product Image</label>
                         <input type="file" id="pImageFile" accept="image/*" style="margin-bottom: 0.5rem;">
                         <div style="text-align: center; margin: 0.5rem 0;">OR</div>
