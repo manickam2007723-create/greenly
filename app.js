@@ -36,10 +36,18 @@ const getEcoScore = () => {
 const getLifetimeEcoScore = () => {
    if (!currentUser) return 0;
    let score = 0;
+   if (currentUser.spinPenalty) score -= currentUser.spinPenalty; // Decrease score for active wheel spins
+   
    const userOrders = orders.filter(o => o.userEmail === currentUser.email && o.status !== 'Cancelled');
    userOrders.forEach(o => {
+      if (o.claimedReward) score -= 20; // Decrease the score if they got a checkout reward
       o.items.forEach(item => {
-         score += (augmentProduct(item).isBiodegradable ? 2 : -2) * item.quantity;
+         if (item.category === 'Reward Gift') {
+             // Decrease the score if they claimed a free physical gift from the calculator
+             score -= 50;
+         } else {
+             score += (augmentProduct(item).isBiodegradable ? 2 : -2) * item.quantity;
+         }
       });
    });
    return score;
@@ -102,7 +110,9 @@ const updateUIState = () => {
           ${initial}
         </div>
         <div id="logoutDropdown" class="glass" style="display: none; position: absolute; top: 100%; right: 0; margin-top: 10px; padding: 1rem; border-radius: 8px; min-width: 200px; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: left;">
-          <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.8rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${currentUser.email}</div>
+          <div style="font-size: 0.95rem; font-weight: bold; color: var(--text-main); margin-bottom: 0.2rem;">${currentUser.name}</div>
+          <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.8rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${currentUser.phone || ''}</div>
+          <a href="#" data-link="account" onclick="document.getElementById('logoutDropdown').style.display='none'" style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-main); font-weight: 500; text-decoration: none; margin-bottom: 0.5rem;"><i data-feather="user" style="width: 16px; height: 16px;"></i> My Profile</a>
           <button class="btn btn-secondary" style="width: 100%; padding: 0.5rem; justify-content: center;" onclick="logout(event)"><i data-feather="log-out" style="width: 16px; height: 16px;"></i> Logout</button>
         </div>
       `;
@@ -178,44 +188,18 @@ window.fetchUserOrders = async () => {
   }
 };window.checkEmailPhase = (e) => {
   e.preventDefault();
-  const email = document.getElementById('login_email').value.trim().toLowerCase();
+  const nameInput = document.getElementById('login_email').value.trim();
+  const phoneInput = document.getElementById('login_phone') ? document.getElementById('login_phone').value.trim() : '';
 
   // Admin bypass
-  if (email === 'manickam2007723@gmail.com') {
+  if (nameInput.toLowerCase() === 'manickam2007723@gmail.com') {
     document.getElementById('login-form-email').style.display = 'none';
     document.getElementById('login-form-password').style.display = 'block';
   } else {
-    currentUser = { name: email.split('@')[0], email: email };
+    currentUser = { name: nameInput, email: nameInput, phone: phoneInput };
     saveState();
     
-    // Simulate an SMS from Greenly visually for feedback
-    alert("📱 ACCOUNT VERIFIED\\nWelcome " + currentUser.name + "!\\nIf you entered a valid phone number, a real SMS has been dispatched automatically.");
-    
-    // ACTUALLY Send a real SMS via JavaScript
-    const phone = document.getElementById('login_phone').value.trim();
-    if (phone && phone.length >= 10) {
-        showToast('Sending real SMS to your phone...');
-        fetch('https://textbelt.com/text', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                phone: phone,
-                message: 'Greenly: ' + currentUser.name + ', your account is verified successfully! Welcome to the circular economy.',
-                key: 'textbelt', // Public test key for 1 free SMS per day
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                console.log("Real SMS dispatched successfully!");
-            } else {
-                console.error("SMS Quota API Error:", data.error);
-            }
-        })
-        .catch(err => console.error("API error:", err));
-    }
-    
-    showToast('Logged in successfully!');
+    showToast('Welcome, ' + currentUser.name + '!');
     navigate('home');
     if (typeof window.fetchUserOrders === 'function') window.fetchUserOrders();
   }
@@ -226,7 +210,7 @@ window.loginAdmin = (e) => {
   const email = document.getElementById('login_email').value.trim().toLowerCase();
   const pass = document.getElementById('login_pass').value;
 
-  if (email === 'manickam2007723@gmail.com' && pass === 'manickam@2007') {
+  if (email === 'manickam2007723@gmail.com' && pass === 'qscgyjm') {
     currentUser = { name: 'Admin', email };
     saveState();
     sessionStorage.setItem('isAdminAuthenticated', 'true');
@@ -280,6 +264,23 @@ window.updateCheckoutTotal = () => {
         grandTotal += itemTotal;
         row.querySelector('.chk-item-total').innerText = '₹' + itemTotal.toFixed(2);
     });
+
+    const rewardCheckbox = document.getElementById('chk_claim_reward');
+    let discountHTML = '';
+    if (rewardCheckbox && rewardCheckbox.checked) {
+        const discountAmt = parseInt(rewardCheckbox.dataset.discount) || 20;
+        grandTotal = Math.max(0, grandTotal - discountAmt);
+        discountHTML = `
+            <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 1rem; color: #2e7d32;">
+                <strong>Eco Reward Applied:</strong>
+                <span>-₹${discountAmt.toFixed(2)}</span>
+            </div>
+        `;
+    }
+
+    const discountDisplay = document.getElementById('chk-discount-display');
+    if (discountDisplay) discountDisplay.innerHTML = discountHTML;
+
     document.getElementById('chk-grand-total').innerText = '₹' + grandTotal.toFixed(2);
     
     // update button text
@@ -338,7 +339,14 @@ window.handleDirectCheckout = async (e) => {
      const newQty = qtyInput ? (parseInt(qtyInput.value) || 1) : i.quantity;
      return { ...i, quantity: newQty };
   });
-  const total = itemsToOrder.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2);
+
+  const rewardCheckbox = document.getElementById('chk_claim_reward');
+  const discountAmt = rewardCheckbox ? (parseInt(rewardCheckbox.dataset.discount) || 20) : 0;
+  const claimedReward = rewardCheckbox && rewardCheckbox.checked ? `₹${discountAmt} Eco Score Discount` : null;
+
+  let calculatedTotal = itemsToOrder.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  if (claimedReward) calculatedTotal = Math.max(0, calculatedTotal - discountAmt);
+  const total = calculatedTotal.toFixed(2);
 
   const newOrder = {
     id: Math.floor(Math.random() * 2000000000), // numeric ID to satisfy bigint
@@ -348,7 +356,8 @@ window.handleDirectCheckout = async (e) => {
     delivery: { address, phone },
     payment: paymentMethod,
     userEmail: currentUser ? currentUser.email : 'Guest',
-    status: 'Active'
+    status: 'Active',
+    claimedReward: claimedReward
   };
 
 
@@ -424,12 +433,12 @@ const views = {
         <h2 class="page-title" style="font-size: 2rem;">Welcome</h2>
         <form id="login-form-email" onsubmit="window.checkEmailPhase(event)">
           <div class="form-group">
-            <label for="login_email">Email / Gmail ID</label>
-            <input type="email" id="login_email" class="form-control" required placeholder="user@gmail.com" autocomplete="off">
+            <label for="login_email">Enter your Name (or Admin Email)</label>
+            <input type="text" id="login_email" class="form-control" required placeholder="User Name / Admin Email" autocomplete="off">
           </div>
           <div class="form-group">
-            <label for="login_phone">Phone Number</label>
-            <input type="tel" id="login_phone" class="form-control" required placeholder="+91 9876543210" autocomplete="off">
+            <label for="login_phone">Phone Number (Optional)</label>
+            <input type="tel" id="login_phone" class="form-control" placeholder="+91 9876543210" autocomplete="off">
           </div>
           <button type="submit" class="btn" style="width: 100%; justify-content: center; padding: 1rem;">
              Continue
@@ -448,6 +457,23 @@ const views = {
             Back
           </button>
         </form>
+      </div>
+    `;
+  },
+
+  'account': () => {
+    if (!currentUser) return views['login']();
+    return `
+      <div class="glass page-section" style="max-width: 500px; margin: 4rem auto; text-align: center;">
+        <i data-feather="user" style="width: 64px; height: 64px; margin-bottom: 1rem; color: #2e7d32;"></i>
+        <h2 class="page-title">My Account</h2>
+        <div style="background: #e8f5e9; border: 1px solid #a5d6a7; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+            <h3 style="margin-bottom: 0.5rem; color: #1b5e20;">${currentUser.name}</h3>
+            <p style="margin: 0; color: #2e7d32; font-size: 1.1rem;"><i data-feather="phone" style="width: 16px; height: 16px; margin-right: 5px;"></i>${currentUser.phone || 'No phone provided'}</p>
+        </div>
+        <button class="btn btn-secondary" onclick="window.logout(event)" style="width: 100%; justify-content: center;">
+          <i data-feather="log-out"></i> Sign Out
+        </button>
       </div>
     `;
   },
@@ -632,7 +658,7 @@ const views = {
 
     const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2);
     const ecoScore = items.reduce((score, item) => score + (augmentProduct(item).isBiodegradable ? 2 : -2) * item.quantity, 0);
-    const eligibleForReward = ecoScore > 0;
+    const eligibleForReward = ecoScore >= 10;
 
     return `
       <div class="glass page-section">
@@ -644,7 +670,7 @@ const views = {
             <form id="checkout-form" onsubmit="window.handleDirectCheckout(event)">
               <div class="form-group" style="margin-top: 1rem;">
                 <label>Phone Number</label>
-                <input type="tel" id="chk_phone" class="form-control" required placeholder="e.g. +91 98765 43210">
+                <input type="tel" id="chk_phone" class="form-control" required placeholder="e.g. +91 98765 43210" value="${currentUser && currentUser.phone ? currentUser.phone : ''}">
               </div>
               <div class="form-group">
                 <label>Delivery Address</label>
@@ -693,11 +719,16 @@ const views = {
                 <strong>Grand Total</strong>
                 <strong id="chk-grand-total" style="color: var(--accent-color);">₹${total}</strong>
               </div>
+              <div id="chk-discount-display"></div>
               <div style="margin-top: 2rem; background: ${eligibleForReward ? '#e8f5e9' : '#fff3cd'}; padding: 1.5rem; border-radius: 8px; border: 1px solid ${eligibleForReward ? '#a5d6a7' : '#ffeeba'};">
                 <h4 style="margin-top:0; color: ${eligibleForReward ? '#2e7d32' : '#856404'}; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;"><i data-feather="${eligibleForReward ? 'gift' : 'target'}"></i> Final Eco Score: ${ecoScore > 0 ? '+'+ecoScore : ecoScore}</h4>
                 ${eligibleForReward 
-                  ? `<p style="margin-bottom:0; font-size:0.95rem; color: #2e7d32;">Awesome! You've unlocked a free <strong>Reusable Bamboo Straw Set</strong> with this order for making sustainable choices.</p>`
-                  : `<p style="margin-bottom:0; font-size:0.95rem; color: #856404;">You need a positive Eco Score to unlock free gifts. Consider swapping non-biodegradable items for better choices!</p>`
+                  ? `<p style="margin-bottom:0; font-size:0.95rem; color: #2e7d32;">Awesome! You've unlocked a SURPRISE reward with this order for making sustainable choices.</p>
+                     <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; cursor: pointer; color: #2e7d32; font-weight: bold; background: white; padding: 0.8rem; border-radius: 4px; border: 1px dashed #2e7d32;">
+                        <input type="checkbox" id="chk_claim_reward" onchange="window.updateCheckoutTotal()" data-discount="${ecoScore >= 50 ? 50 : 20}">
+                        Claim Mystery Eco Reward Discount!
+                     </label>`
+                  : `<p style="margin-bottom:0; font-size:0.95rem; color: #856404;">You need an Eco Score of at least +10 to unlock discounts. Consider swapping non-biodegradable items for better choices!</p>`
                 }
               </div>
             </div>
@@ -860,15 +891,15 @@ const views = {
 
       <div class="page-section glass" style="margin-top: 2rem; display: flex; flex-direction: column; align-items: center; text-align: center;">
          <h3 style="margin-bottom: 0.5rem;">The Eco Rewards Wheel</h3>
-         <p style="color: var(--text-muted); margin-bottom: 2rem;">Spend <strong>10 Eco Score points</strong> to spin the wheel and win a guaranteed gift or discount!</p>
+         <p style="color: var(--text-muted); margin-bottom: 2rem;">Spend <strong>4 Eco Score points</strong> to spin the wheel and win a guaranteed gift or discount!</p>
          
          <div style="position: relative; width: 280px; height: 280px; margin: 0 auto 2rem auto;">
             <div id="spinWheel" style="width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(#e8f5e9 0 90deg, #c8e6c9 90deg 180deg, #a5d6a7 180deg 270deg, #81c784 270deg 360deg); border: 6px solid #2e7d32; transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99); box-shadow: 0 4px 15px rgba(0,0,0,0.15); box-sizing: border-box;">
                <!-- Text labels oriented correctly -->
-               <div style="position:absolute; top: 20%; right: 10%; transform: rotate(45deg); font-weight: bold; font-size: 1rem; color: #1b5e20;">₹50 Cash</div>
-               <div style="position:absolute; bottom: 20%; right: 10%; transform: rotate(135deg); font-weight: bold; font-size: 1rem; color: #1b5e20;">20% Off</div>
-               <div style="position:absolute; bottom: 20%; left: 10%; transform: rotate(225deg); font-weight: bold; font-size: 1rem; color: #1b5e20;">Free Bag</div>
-               <div style="position:absolute; top: 20%; left: 10%; transform: rotate(315deg); font-weight: bold; font-size: 1rem; color: #1b5e20;">Free Ship</div>
+               <div style="position:absolute; top: 20%; right: 10%; transform: rotate(45deg); font-weight: bold; font-size: 1rem; color: #1b5e20;">Mystery</div>
+               <div style="position:absolute; bottom: 20%; right: 10%; transform: rotate(135deg); font-weight: bold; font-size: 1rem; color: #1b5e20;">Gift Box</div>
+               <div style="position:absolute; bottom: 20%; left: 10%; transform: rotate(225deg); font-weight: bold; font-size: 1rem; color: #1b5e20;">Surprise</div>
+               <div style="position:absolute; top: 20%; left: 10%; transform: rotate(315deg); font-weight: bold; font-size: 1rem; color: #1b5e20;">Prize</div>
                
                <!-- Wheel dividers -->
                <div style="position: absolute; top: 0; left: 50%; width: 2px; height: 100%; background: #2e7d32; transform: translateX(-50%);"></div>
@@ -879,21 +910,238 @@ const views = {
             
             <button class="btn" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border-radius: 50%; width: 70px; height: 70px; padding: 0; z-index: 10; font-size: 1rem; font-weight: bold; background: white; color: #2e7d32; border: 4px solid #2e7d32; cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.2);" onclick="window.spinRewardsWheel(${score})">SPIN</button>
          </div>
+         ${currentUser.spinRewardsCount ? `<div style="margin-top: 1rem; background: #e8f5e9; padding: 1rem; border-radius: 8px; color: #2e7d32; border: 1px dashed #2e7d32; display: inline-block;"><strong>🎯 Total Spin Rewards Walked Away With: <span style="font-size: 1.25rem;">${currentUser.spinRewardsCount}</span></strong></div>` : ''}
+      </div>
+    `;
+  },
+  
+  'impact': () => {
+    // Generate real stats dynamically from local records
+    const totalUsers = Array.from(new Set(orders.map(o => o.userEmail))).length + 14208; // Base scale off start seed
+    let plasticSaved = 32450;
+    let ecoActions = 89120;
+    orders.forEach(o => {
+        if(o.status !== 'Cancelled') {
+            ecoActions += 1;
+            o.items.forEach(item => {
+                const aug = augmentProduct(item);
+                if (aug.isBiodegradable && item.category !== 'Reward Gift') {
+                    plasticSaved += item.quantity * 2.5; 
+                    ecoActions += item.quantity;
+                }
+            });
+        }
+    });
+
+    return `
+      <div class="glass page-section" style="margin-top: 1.5rem; text-align: center; border-left: 5px solid #2e7d32;">
+        <h2 style="color: #2e7d32; font-size: 2.2rem; margin-bottom: 1rem;"><i data-feather="globe"></i> SDG 12: Responsible Consumption</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; text-align: left;">
+          <div style="background: #ffebee; padding: 1.5rem; border-radius: 8px; border: 1px solid #ef9a9a;">
+             <h3 style="color: #c62828; margin-bottom: 0.5rem;"><i data-feather="alert-triangle"></i> The Problem</h3>
+             <p style="color: #b71c1c; font-size: 0.95rem;">Globally, over <strong>400 million tons</strong> of plastic are produced yearly, with only <strong>9% recycled</strong>. It pollutes ecosystems and harms ocean life.</p>
+          </div>
+          <div style="background: #e8f5e9; padding: 1.5rem; border-radius: 8px; border: 1px solid #a5d6a7;">
+             <h3 style="color: #2e7d32; margin-bottom: 0.5rem;"><i data-feather="check-circle"></i> The Solution</h3>
+             <p style="color: #1b5e20; font-size: 0.95rem;">Greenly changes buying habits. Calculate your footprint, switch to vetted sustainable alternatives, and earn rewards for reducing waste.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass page-section" style="margin-top: 1.5rem;">
+        <h2 style="color: var(--text-main); font-size: 1.5rem; border-bottom: 2px solid #e8f5e9; padding-bottom: 0.5rem; margin-bottom: 1.5rem;"><i data-feather="bar-chart-2"></i> Sustainability Dashboard</h2>
+        <div style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 150px; background: #fff; padding: 1rem; border-radius: 8px; border: 1px solid #e0e0e0; text-align: center;">
+             <h4 style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Total Users</h4>
+             <div style="font-size: 1.8rem; font-weight: bold; color: #2e7d32;">${Math.floor(totalUsers).toLocaleString()}</div>
+          </div>
+          <div style="flex: 1; min-width: 150px; background: #fff; padding: 1rem; border-radius: 8px; border: 1px solid #e0e0e0; text-align: center;">
+             <h4 style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Plastic Saved (kg)</h4>
+             <div style="font-size: 1.8rem; font-weight: bold; color: #0277bd;">${Math.floor(plasticSaved).toLocaleString()}</div>
+          </div>
+          <div style="flex: 1; min-width: 150px; background: #fff; padding: 1rem; border-radius: 8px; border: 1px solid #e0e0e0; text-align: center;">
+             <h4 style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase;">Eco Actions</h4>
+             <div style="font-size: 1.8rem; font-weight: bold; color: #f57f17;">${Math.floor(ecoActions).toLocaleString()}</div>
+          </div>
+        </div>
+
+        <div style="background: #f1f8e9; padding: 1.5rem; border-radius: 8px; border: 1px solid #c5e1a5;">
+          <h3 style="color: #33691e; margin-bottom: 1rem;">Eco Score Calculator</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+             <div>
+                <label style="display:block; font-size: 0.9rem; margin-bottom: 0.3rem;">Plastic Bags/Week</label>
+                <input type="number" id="calc_bags" class="form-control" value="5" min="0">
+             </div>
+             <div>
+                <label style="display:block; font-size: 0.9rem; margin-bottom: 0.3rem;">Plastic Bottles/Week</label>
+                <input type="number" id="calc_bottles" class="form-control" value="3" min="0">
+             </div>
+             <div>
+                <label style="display:block; font-size: 0.9rem; margin-bottom: 0.3rem;">Eco Products/Month</label>
+                <input type="number" id="calc_eco" class="form-control" value="2" min="0">
+             </div>
+             <div>
+                <label style="display:block; font-size: 0.9rem; margin-bottom: 0.3rem;">Recycling Habit</label>
+                <select id="calc_recycle" class="form-control">
+                   <option value="none">Never</option>
+                   <option value="some">Sometimes</option>
+                   <option value="all">Always</option>
+                </select>
+             </div>
+          </div>
+          <button class="btn" style="padding: 0.8rem 1.5rem;" onclick="window.calculateEcoScore()"><i data-feather="activity"></i> Calculate Impact</button>
+          
+          <div id="calc_result" style="display: none; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px dashed #c5e1a5;">
+             <div style="display: flex; flex-wrap: wrap; gap: 2rem;">
+                <div style="flex: 1; min-width: 250px;">
+                   <h4 style="margin-bottom: 0.5rem;">Eco Score: <span id="res_score" style="font-size: 1.8rem; font-weight: bold;"></span>/100</h4>
+                   <div style="width: 100%; height: 12px; background: #e0e0e0; border-radius: 6px; overflow: hidden; margin-bottom: 0.5rem;">
+                      <div id="res_progress" style="height: 100%; background: #2e7d32; width: 0%; transition: width 1s ease;"></div>
+                   </div>
+                   <p style="font-weight: bold; margin-bottom: 0.5rem;">Sustainability Level: <span id="res_level"></span></p>
+                   <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid #dcdcdc;">
+                      <p style="font-size: 0.95rem; margin-bottom: 0;"><strong><i data-feather="trending-down" style="color:#0277bd;"></i> Plastic Tracker:</strong> You could save <span id="res_saved" style="color: #0277bd; font-weight: bold;"></span> of plastic waste per year!</p>
+                   </div>
+                </div>
+                <div style="flex: 1; min-width: 250px; background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid #dcdcdc;">
+                   <h4 style="margin-bottom: 1rem; color: #f57f17;"><i data-feather="star"></i> Rewards Unlocked</h4>
+                   <p style="font-size: 0.9rem; margin-bottom: 1rem;">You've earned <strong id="res_points" style="color: #2e7d32;">0</strong> Green Points!</p>
+                   <div id="res_rewards_list"></div>
+                   <p style="margin-top:1rem; font-size:0.85rem; color:var(--text-muted);">Points and rewards instantly apply to your cart.</p>
+                </div>
+             </div>
+             
+             <div style="margin-top: 1.5rem;">
+                <h4 style="margin-bottom: 0.5rem;">Personalized Suggestions:</h4>
+                <ul id="res_tips" style="padding-left: 1.5rem; font-size: 0.95rem; color: #1b5e20;"></ul>
+             </div>
+          </div>
+        </div>
       </div>
     `;
   }
 };
 
+window.calculateEcoScore = () => {
+    const bags = parseInt(document.getElementById('calc_bags').value) || 0;
+    const bottles = parseInt(document.getElementById('calc_bottles').value) || 0;
+    const eco = parseInt(document.getElementById('calc_eco').value) || 0;
+    const recycle = document.getElementById('calc_recycle').value;
+    
+    let score = 50 - (bags * 2) - (bottles * 2) + (eco * 5);
+    if (recycle === 'all') score += 20;
+    if (recycle === 'some') score += 5;
+    
+    score = Math.max(0, Math.min(100, score));
+    
+    const resultDiv = document.getElementById('calc_result');
+    resultDiv.style.display = 'block';
+    
+    document.getElementById('res_score').innerText = score;
+    setTimeout(() => { document.getElementById('res_progress').style.width = score + '%'; }, 100);
+    
+    const levelEl = document.getElementById('res_level');
+    if (score < 40) {
+        levelEl.innerText = 'Low 😕'; levelEl.style.color = '#c62828';
+    } else if (score < 75) {
+        levelEl.innerText = 'Moderate 🙂'; levelEl.style.color = '#f57f17';
+    } else {
+         levelEl.innerText = 'High 🌿'; levelEl.style.color = '#2e7d32';
+    }
+    
+    const annualWasteKg = ((bags + bottles) * 52 * 0.02).toFixed(1);
+    document.getElementById('res_saved').innerText = `${annualWasteKg} kg`;
+    
+    const greenPoints = score * 5;
+    document.getElementById('res_points').innerText = greenPoints;
+    
+    const rewardsContainer = document.getElementById('res_rewards_list');
+    if (rewardsContainer) {
+       const customRewards = JSON.parse(localStorage.getItem('ecoMart_customRewards')) || [];
+       const platPrizes = customRewards.filter(r => r.type === 'HubPlatinum');
+       const goldPrizes = customRewards.filter(r => r.type === 'HubGold');
+       const silverPrizes = customRewards.filter(r => r.type === 'HubSilver');
+
+       let rewardsHTML = '';
+       
+       if (score >= 80) {
+           const itemName = platPrizes.length > 0 ? platPrizes[0].name : 'Free Bamboo Toothbrush Set';
+           rewardsHTML += `
+             <div style="margin-top: 1rem; padding: 1rem; background: #e8f5e9; border: 1px solid #2e7d32; border-radius: 8px;">
+               <h5 style="color: #2e7d32; margin-bottom: 0.5rem;"><i data-feather="award"></i> Platinum Admin Reward!</h5>
+               <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">${itemName}</p>
+               <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; width: 100%; justify-content: center;" onclick="window.claimReward('${itemName.replace(/'/g, "\\'")}', 1, 0, 'https://images.unsplash.com/photo-1600180758890-6b223bcde9bf?w=400')">Claim Admin Prize</button>
+             </div>
+           `;
+       } else if (score >= 50) {
+           const itemName = goldPrizes.length > 0 ? goldPrizes[0].name : 'Free Reusable Jute Bag';
+           rewardsHTML += `
+             <div style="margin-top: 1rem; padding: 1rem; background: #fff3cd; border: 1px solid #ff9f00; border-radius: 8px;">
+               <h5 style="color: #ff9f00; margin-bottom: 0.5rem;"><i data-feather="gift"></i> Gold Admin Reward!</h5>
+               <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">${itemName}</p>
+               <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; width: 100%; justify-content: center;" onclick="window.claimReward('${itemName.replace(/'/g, "\\'")}', 1, 0, 'https://images.unsplash.com/photo-1590874551139-4933d1cbb094?w=400')">Claim Admin Prize</button>
+             </div>
+           `;
+       } else if (score >= 20) {
+           const itemName = silverPrizes.length > 0 ? silverPrizes[0].name : 'Discounted Wooden Comb (₹50)';
+           rewardsHTML += `
+             <div style="margin-top: 1rem; padding: 1rem; background: #e3f2fd; border: 1px solid #1976d2; border-radius: 8px;">
+               <h5 style="color: #1976d2; margin-bottom: 0.5rem;"><i data-feather="tag"></i> Silver Admin Reward!</h5>
+               <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">${itemName}</p>
+               <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; width: 100%; justify-content: center;" onclick="window.claimReward('${itemName.replace(/'/g, "\\'")}', 1, 50, 'https://images.unsplash.com/photo-1615397323635-430931505bd2?w=400')">Claim Admin Prize</button>
+             </div>
+           `;
+       } else {
+           rewardsHTML += `<p style="font-size: 0.85rem; color: #c62828;">Score higher to unlock free products and custom discounts!</p>`;
+       }
+       rewardsContainer.innerHTML = rewardsHTML;
+    }
+    
+    const tipsList = document.getElementById('res_tips');
+    tipsList.innerHTML = '';
+    if (bags > 0) tipsList.innerHTML += `<li>Switch to reusable cloth or jute bags to eliminate your weekly usage of ${bags} plastic bags.</li>`;
+    if (bottles > 0) tipsList.innerHTML += `<li>Invest in a stainless steel or copper bottle. You can save ${bottles * 52} plastic bottles a year.</li>`;
+    if (recycle !== 'all') tipsList.innerHTML += `<li>Improve your recycling habits. Check your local guidelines for proper waste segregation.</li>`;
+    if (eco < 3) tipsList.innerHTML += `<li>Explore Greenly's recommended sustainable products to switch out everyday items.</li>`;
+    if (score >= 75) tipsList.innerHTML += `<li>Great job! You're making a strong positive impact. Keep up the good work.</li>`;
+    
+    if (window.feather) feather.replace();
+};
+
+window.claimReward = (name, quantity, price, image) => {
+    const existing = cart.find(item => item.name === name);
+    if (existing) {
+        showToast("You have already claimed this reward! Check your cart.");
+        navigate('cart');
+        return;
+    }
+
+    const rewardProduct = {
+        id: "reward_" + new Date().getTime(),
+        name: name,
+        price: price,
+        image: image,
+        category: "Reward Gift",
+        description: "A special sustainability reward gifted to you for your high Eco Score!",
+        isBiodegradable: true,
+        quantity: quantity
+    };
+
+    cart.push(rewardProduct);
+    saveState();
+    showToast(name + " added to your cart!");
+    navigate('cart');
+};
+
 window.spinRewardsWheel = (currentScore) => {
-    if (currentScore < 10) {
-       showToast("You need at least 10 Eco Score points to spin!");
+    if (currentScore < 4) {
+       showToast("You need at least 4 Eco Score points to spin!");
        return;
     }
     const wheel = document.getElementById('spinWheel');
     if (wheel.dataset.spinning === 'true') return;
     wheel.dataset.spinning = 'true';
     
-    // Subtract 10 points virtually (in a real app we'd save this stat)
     showToast("Spinning the wheel...");
 
     const deg = Math.floor(Math.random() * 360) + 3600; // spin 10 times + random stop
@@ -903,14 +1151,32 @@ window.spinRewardsWheel = (currentScore) => {
         wheel.dataset.spinning = 'false';
         const rawDeg = deg % 360;
         const targetDeg = 360 - rawDeg; 
+        const customR = JSON.parse(localStorage.getItem('ecoMart_customRewards')) || [];
+        const spinPrizes = customR.filter(r => r.type === 'SpinWheel');
         let reward = "";
         
-        if (targetDeg >= 0 && targetDeg < 90) reward = "₹50 Cashback on your next order!";
-        else if (targetDeg >= 90 && targetDeg < 180) reward = "A VIP 20% Discount Code!";
-        else if (targetDeg >= 180 && targetDeg < 270) reward = "A Free Eco Bag!";
-        else reward = "Free Shipping Code!";
+        if (spinPrizes.length >= 4) {
+             if (targetDeg >= 0 && targetDeg < 90) reward = spinPrizes[0].name;
+             else if (targetDeg >= 90 && targetDeg < 180) reward = spinPrizes[1].name;
+             else if (targetDeg >= 180 && targetDeg < 270) reward = spinPrizes[2].name;
+             else reward = spinPrizes[3].name;
+        } else if (spinPrizes.length > 0) {
+             reward = spinPrizes[Math.floor(Math.random() * spinPrizes.length)].name;
+        } else {
+            // Default generic fallback if admin hasn't added custom ones
+            if (targetDeg >= 0 && targetDeg < 90) reward = "Mystery Prize A (₹10 Cashback code emailed to you)!";
+            else if (targetDeg >= 90 && targetDeg < 180) reward = "Gift Box (5% Discount applied below)!";
+            else if (targetDeg >= 180 && targetDeg < 270) reward = "Surprise Package (₹20 Off instantly)!";
+            else reward = "Exclusive Prize (Free Shipping tracking code)!";
+        }
 
-        alert("🎉 CONGRATULATIONS! 🎉\\n\\nYou won:\\n" + reward + "\\n\\nKeep up the great sustainable work!");
+        // Subtract 4 points permanently AFTER they got the reward
+        currentUser.spinPenalty = (currentUser.spinPenalty || 0) + 4;
+        currentUser.spinRewardsCount = (currentUser.spinRewardsCount || 0) + 1;
+        saveState();
+
+        alert("🎉 CONGRATULATIONS! 🎉\\n\\nYou won:\\n" + reward + "\\n\\n-4 Eco Score Points\\nKeep up the great sustainable work!");
+        renderView('gifts'); // Refresh UI instantly to show updated counts and lower score
     }, 4200);
 };
 

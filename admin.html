@@ -69,6 +69,8 @@
                         data-feather="box"></i> Products</li>
                 <li id="menu-orders" onclick="switchTab('orders')" style="cursor: pointer;"><i
                         data-feather="shopping-bag"></i> Orders</li>
+                <li id="menu-rewards" onclick="switchTab('rewards')" style="cursor: pointer;"><i
+                        data-feather="gift"></i> Rewards</li>
             </ul>
         </aside>
 
@@ -142,6 +144,35 @@
                 </div>
                 <div id="ordersList" style="margin-top: 1.5rem;">
                     <!-- Orders dynamically loaded here -->
+                </div>
+            </section>
+
+            <section id="rewardsSection" class="card" style="display:none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                    <h2 style="margin: 0;"><i data-feather="gift"></i> Custom Rewards Vault</h2>
+                    <p style="margin:0; color:var(--text-muted); font-size: 0.9rem;">Rewards created here dynamically populate the Spin Wheel and Eco Hub!</p>
+                </div>
+                <div style="background: #e8f5e9; border: 1px dashed #2e7d32; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                    <h3 style="color: #2e7d32; margin-bottom: 1rem;"><i data-feather="plus"></i> Add Fresh Custom Reward</h3>
+                    <form id="addRewardForm">
+                        <div class="form-group">
+                            <label>Reward Name</label>
+                            <input type="text" id="rName" required placeholder="e.g. ₹50 Instant Cashback Code!">
+                        </div>
+                        <div class="form-group">
+                            <label>Reward Destination Pool</label>
+                            <select id="rType" required style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-family: inherit;">
+                                <option value="SpinWheel">Spin Wheel (Mystery Spin Prize)</option>
+                                <option value="HubPlatinum">Hub Platinum (Score 80+ Unlock)</option>
+                                <option value="HubGold">Hub Gold (Score 50+ Unlock)</option>
+                                <option value="HubSilver">Hub Silver (Score 20+ Unlock)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn" style="background: #2e7d32; border: none; color: white; padding: 0.8rem; border-radius: 6px; cursor: pointer; width: 100%;"><i data-feather="save"></i> Deploy Reward Live</button>
+                    </form>
+                </div>
+                <div id="rewardsList" style="margin-top: 1.5rem;">
+                    <!-- Custom rewards loaded here -->
                 </div>
             </section>
         </main>

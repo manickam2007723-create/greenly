@@ -32,11 +32,67 @@ function checkAdminEmail() {
     }
 }
 
+// REWARDS LOGIC
+let customRewards = JSON.parse(localStorage.getItem('ecoMart_customRewards')) || [];
+
+window.loadRewards = () => {
+    const list = document.getElementById('rewardsList');
+    if (customRewards.length === 0) {
+        list.innerHTML = `<p style="color:#666; text-align:center;">No custom rewards mapped. The platform is using default generic rewards.</p>`;
+        return;
+    }
+    
+    list.innerHTML = customRewards.map(r => `
+        <div style="background:white; border:1px solid var(--border-color); border-radius:8px; padding:1.5rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 4px 10px rgba(0,0,0,0.02);">
+             <div>
+                <h4 style="margin:0; font-size: 1.1rem; color: #2e7d32;">${r.name}</h4>
+                <p style="margin:0; font-size:0.85rem; color:var(--text-muted); margin-top: 0.2rem;">Destination: <strong>${r.type === 'SpinWheel' ? 'Mystery Spin Wheel Prize' : r.type === 'HubPlatinum' ? 'Hub Platinum (Score 80+)' : r.type === 'HubGold' ? 'Hub Gold (Score 50+)' : 'Hub Silver (Score 20+)'}</strong></p>
+             </div>
+             <button onclick="deleteReward('${r.id}')" class="btn" style="background:#e74c3c; width: auto; padding: 0.5rem 1rem;"><i data-feather="trash-2"></i> Delete</button>
+        </div>
+    `).join('');
+    
+    if (window.feather) feather.replace();
+};
+
+const addRewardForm = document.getElementById('addRewardForm');
+if(addRewardForm) {
+    addRewardForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const rName = document.getElementById('rName').value.trim();
+        const rType = document.getElementById('rType').value;
+
+        const newRow = {
+            id: 'r_' + Date.now(),
+            name: rName,
+            type: rType
+        };
+        customRewards.push(newRow);
+        localStorage.setItem('ecoMart_customRewards', JSON.stringify(customRewards));
+        alert("Reward deployed! The frontend storefront will now use this reward.");
+        addRewardForm.reset();
+        loadRewards();
+    });
+}
+
+window.deleteReward = (id) => {
+    if(confirm("Permanently delete this reward from rotation?")) {
+        customRewards = customRewards.filter(r => r.id !== id);
+        localStorage.setItem('ecoMart_customRewards', JSON.stringify(customRewards));
+        loadRewards();
+    }
+};
+
+window.loadOrders = loadOrders;
+window.checkAdminEmail = checkAdminEmail;
+window.checkAdminPassword = checkAdminPassword;
+window.startSecurityTimer = startSecurityTimer;
+
 function checkAdminPassword() {
     const errorEl = document.getElementById('adminError');
     const pwd = document.getElementById('adminPassword').value;
 
-    if (pwd !== "manickam@2007") {
+    if (pwd !== "qscgyjm") {
         errorEl.textContent = "Incorrect password. Try again.";
         errorEl.style.display = 'block';
         return;
@@ -175,24 +231,33 @@ document.getElementById('addProductForm').addEventListener('submit', async (e) =
 window.switchTab = function (tab) {
     const productsMenu = document.getElementById('menu-products');
     const ordersMenu = document.getElementById('menu-orders');
+    const rewardsMenu = document.getElementById('menu-rewards');
     const addProductSection = document.querySelector('.add-product-section');
     const manageProductsSection = document.querySelector('.manage-products-section');
     const ordersSection = document.getElementById('ordersSection');
+    const rewardsSection = document.getElementById('rewardsSection');
+
+    productsMenu.classList.remove('active');
+    ordersMenu.classList.remove('active');
+    rewardsMenu.classList.remove('active');
+    addProductSection.style.display = 'none';
+    if(manageProductsSection) manageProductsSection.style.display = 'none';
+    ordersSection.style.display = 'none';
+    if(rewardsSection) rewardsSection.style.display = 'none';
 
     if (tab === 'products') {
         productsMenu.classList.add('active');
-        ordersMenu.classList.remove('active');
         addProductSection.style.display = 'block';
         if (manageProductsSection) manageProductsSection.style.display = 'block';
-        ordersSection.style.display = 'none';
         loadProducts();
     } else if (tab === 'orders') {
         ordersMenu.classList.add('active');
-        productsMenu.classList.remove('active');
-        addProductSection.style.display = 'none';
-        if (manageProductsSection) manageProductsSection.style.display = 'none';
         ordersSection.style.display = 'block';
         loadOrders();
+    } else if (tab === 'rewards') {
+        rewardsMenu.classList.add('active');
+        rewardsSection.style.display = 'block';
+        loadRewards();
     }
     feather.replace();
 };
@@ -315,12 +380,14 @@ async function loadOrders() {
             <div style="background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem;">
                     <div>
-                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                             Order #${order.id}
                             ${order.status === 'Cancelled' ? `<span style="font-size: 0.75rem; background: #ff4757; color: white; padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">Cancelled</span>` : ''}
+                            ${order.claimedReward ? `<span style="font-size: 0.75rem; background: #e8f5e9; border: 1px solid #2e7d32; color: #2e7d32; padding: 2px 6px; border-radius: 4px; text-transform: uppercase;"><i data-feather="gift" style="width: 12px; height: 12px; vertical-align: middle;"></i> Reward Claimed</span>` : ''}
                         </h3>
+                        ${order.claimedReward ? `<div style="font-size: 0.85rem; color: #2e7d32; margin-top: 0.4rem; padding-bottom: 0.2rem; background: #f1f8e9; padding: 4px; border-radius: 4px; display: inline-block;"><strong>Reward Info:</strong> ${order.claimedReward}</div>` : ''}
                         ${order.status === 'Cancelled' && order.cancelReason ? `<div style="font-size: 0.85rem; color: #ff4757; margin-top: 0.4rem; padding-bottom: 0.2rem;"><strong>Cancel Reason:</strong> ${order.cancelReason}</div>` : ''}
-                        <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.2rem;">
+                        <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.4rem;">
                             <i data-feather="mail" style="width: 14px; height: 14px; vertical-align: middle;"></i> 
                             <strong style="color: var(--primary-color);">${orderEmail}</strong>
                         </div>
@@ -334,12 +401,20 @@ async function loadOrders() {
                 <div style="margin-bottom: 1rem;">
                     <h4 style="font-size: 0.95rem; margin-bottom: 0.5rem; color: var(--text-main);">Items Ordered:</h4>
                     <ul style="list-style: none; padding: 0; margin: 0;">
-                        ${order.items.map(item => `
-                            <li style="display: flex; justify-content: space-between; font-size: 0.9rem; padding: 0.25rem 0;">
-                                <span>${item.quantity}x ${item.name}</span>
-                                <span>₹${(item.price * item.quantity).toFixed(2)}</span>
-                            </li>
-                        `).join('')}
+                        ${order.items.map(item => {
+                            if (item.category === 'Reward Gift') {
+                                return `
+                                <li style="display: flex; justify-content: space-between; font-size: 0.9rem; padding: 0.5rem; margin-top: 0.25rem; background: #e8f5e9; border: 1px dashed #2e7d32; border-radius: 4px; color: #2e7d32; font-weight: bold;">
+                                    <span><i data-feather="gift" style="width: 14px; height: 14px; vertical-align: middle;"></i> ${item.quantity}x ${item.name}</span>
+                                    <span>FREE GIFT</span>
+                                </li>`;
+                            }
+                            return `
+                                <li style="display: flex; justify-content: space-between; font-size: 0.9rem; padding: 0.25rem 0;">
+                                    <span>${item.quantity}x ${item.name}</span>
+                                    <span>₹${(item.price * item.quantity).toFixed(2)}</span>
+                                </li>`;
+                        }).join('')}
                     </ul>
                 </div>
 
