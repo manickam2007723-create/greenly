@@ -425,6 +425,49 @@ window.togglePaymentMethod = () => {
 
 // Mock Google Login Removed Wait for complete logic below
 
+window.submitFeedback = async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('feedback_msg').value.trim();
+  const rating = document.getElementById('feedback_rating').value;
+  if (!msg) return;
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.dataset.originalHtml = submitBtn.innerHTML;
+    submitBtn.innerHTML = "Sending...";
+    submitBtn.disabled = true;
+  }
+
+  const newFeedback = {
+    id: 'fb-' + Date.now(),
+    date: new Date().toLocaleDateString(),
+    userEmail: currentUser ? currentUser.email : 'Guest',
+    message: msg,
+    rating: rating
+  };
+
+  if (window.supabase && typeof SUPABASE_URL !== 'undefined' && !SUPABASE_URL.includes('YOUR_SUPABASE')) {
+    try {
+      await supabase.from('feedbacks').insert([newFeedback]);
+    } catch(err) {
+      console.error(err);
+    }
+  }
+
+  let feedbacks = JSON.parse(localStorage.getItem('ecoMart_feedbacks')) || [];
+  feedbacks.unshift(newFeedback);
+  localStorage.setItem('ecoMart_feedbacks', JSON.stringify(feedbacks));
+
+  showToast('Thank you for your feedback!');
+  
+  if (submitBtn) {
+      submitBtn.innerHTML = submitBtn.dataset.originalHtml;
+      submitBtn.disabled = false;
+  }
+  
+  navigate('home');
+}
+
 // App Views
 const views = {
   login: () => {
@@ -1017,6 +1060,32 @@ const views = {
              </div>
           </div>
         </div>
+      </div>
+    `;
+  },
+
+  feedback: () => {
+    return `
+      <div class="glass page-section" style="max-width: 600px; margin: 4rem auto;">
+        <h2 class="page-title"><i data-feather="message-square"></i> Send Feedback</h2>
+        <p style="text-align: center; color: var(--text-muted); margin-bottom: 2rem;">Help us improve Greenly by sharing your thoughts and experiences.</p>
+        <form onsubmit="window.submitFeedback(event)">
+          <div class="form-group">
+            <label>How would you rate your experience?</label>
+            <select id="feedback_rating" class="form-control" required style="width: 100%; border: 1px solid var(--border-color); padding: 0.75rem; border-radius: 6px; font-family: inherit; font-size: 1rem;">
+              <option value="5">⭐⭐⭐⭐⭐ Excellent</option>
+              <option value="4">⭐⭐⭐⭐ Good</option>
+              <option value="3">⭐⭐⭐ Average</option>
+              <option value="2">⭐⭐ Poor</option>
+              <option value="1">⭐ Terrible</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Your Feedback / Suggestions</label>
+            <textarea id="feedback_msg" class="form-control" rows="5" required placeholder="What do you think about our sustainable products and features?"></textarea>
+          </div>
+          <button type="submit" class="btn" style="width: 100%; justify-content: center; padding: 1rem;"><i data-feather="send"></i> Submit Feedback</button>
+        </form>
       </div>
     `;
   }

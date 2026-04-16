@@ -232,34 +232,42 @@ window.switchTab = function (tab) {
     const productsMenu = document.getElementById('menu-products');
     const ordersMenu = document.getElementById('menu-orders');
     const rewardsMenu = document.getElementById('menu-rewards');
+    const feedbackMenu = document.getElementById('menu-feedback');
     const addProductSection = document.querySelector('.add-product-section');
     const manageProductsSection = document.querySelector('.manage-products-section');
     const ordersSection = document.getElementById('ordersSection');
     const rewardsSection = document.getElementById('rewardsSection');
+    const feedbackSection = document.getElementById('feedbackSection');
 
-    productsMenu.classList.remove('active');
-    ordersMenu.classList.remove('active');
-    rewardsMenu.classList.remove('active');
-    addProductSection.style.display = 'none';
+    if(productsMenu) productsMenu.classList.remove('active');
+    if(ordersMenu) ordersMenu.classList.remove('active');
+    if(rewardsMenu) rewardsMenu.classList.remove('active');
+    if(feedbackMenu) feedbackMenu.classList.remove('active');
+    if(addProductSection) addProductSection.style.display = 'none';
     if(manageProductsSection) manageProductsSection.style.display = 'none';
-    ordersSection.style.display = 'none';
+    if(ordersSection) ordersSection.style.display = 'none';
     if(rewardsSection) rewardsSection.style.display = 'none';
+    if(feedbackSection) feedbackSection.style.display = 'none';
 
     if (tab === 'products') {
-        productsMenu.classList.add('active');
-        addProductSection.style.display = 'block';
+        if(productsMenu) productsMenu.classList.add('active');
+        if(addProductSection) addProductSection.style.display = 'block';
         if (manageProductsSection) manageProductsSection.style.display = 'block';
         loadProducts();
     } else if (tab === 'orders') {
-        ordersMenu.classList.add('active');
-        ordersSection.style.display = 'block';
+        if(ordersMenu) ordersMenu.classList.add('active');
+        if(ordersSection) ordersSection.style.display = 'block';
         loadOrders();
     } else if (tab === 'rewards') {
-        rewardsMenu.classList.add('active');
-        rewardsSection.style.display = 'block';
+        if(rewardsMenu) rewardsMenu.classList.add('active');
+        if(rewardsSection) rewardsSection.style.display = 'block';
         loadRewards();
+    } else if (tab === 'feedback') {
+        if(feedbackMenu) feedbackMenu.classList.add('active');
+        if(feedbackSection) feedbackSection.style.display = 'block';
+        loadFeedback();
     }
-    feather.replace();
+    if (window.feather) feather.replace();
 };
 
 window.deleteProduct = async function (id) {
@@ -429,5 +437,47 @@ async function loadOrders() {
     });
 
     ordersList.innerHTML = html;
-    feather.replace();
+    if (window.feather) feather.replace();
 }
+
+window.loadFeedback = async function() {
+    const feedbackList = document.getElementById('feedbackList');
+    if(!feedbackList) return;
+    
+    let allFeedback = [];
+
+    if (window.supabase && typeof SUPABASE_URL !== 'undefined' && !SUPABASE_URL.includes('YOUR_SUPABASE')) {
+        try {
+            const { data, error } = await supabase.from('feedbacks').select('*').order('id', { ascending: false });
+            if (!error && data) {
+                allFeedback = data;
+            }
+        } catch (err) {
+            console.error("Failed to fetch feedback from supabase", err);
+        }
+    } 
+    
+    if (allFeedback.length === 0) {
+        allFeedback = JSON.parse(localStorage.getItem('ecoMart_feedbacks')) || [];
+    }
+
+    if (allFeedback.length === 0) {
+        feedbackList.innerHTML = `<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No feedback received yet.</p>`;
+        return;
+    }
+
+    feedbackList.innerHTML = allFeedback.map(fb => `
+        <div style="background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                <h4 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-feather="user" style="width: 16px; height: 16px;"></i> ${fb.userEmail || 'Guest'} 
+                    <span style="color: #f1c40f; margin-left: 0.5rem;">${'⭐'.repeat(parseInt(fb.rating) || 5)}</span>
+                </h4>
+                <span style="font-size: 0.85rem; color: var(--text-muted);">${fb.date}</span>
+            </div>
+            <p style="margin: 0; color: var(--text-main); font-size: 0.95rem; line-height: 1.5; background: #f8f9fa; padding: 1rem; border-radius: 6px;">"${fb.message}"</p>
+        </div>
+    `).join('');
+    
+    if (window.feather) feather.replace();
+};

@@ -71,6 +71,8 @@
                         data-feather="shopping-bag"></i> Orders</li>
                 <li id="menu-rewards" onclick="switchTab('rewards')" style="cursor: pointer;"><i
                         data-feather="gift"></i> Rewards</li>
+                <li id="menu-feedback" onclick="switchTab('feedback')" style="cursor: pointer;"><i
+                        data-feather="message-square"></i> Feedback</li>
             </ul>
         </aside>
 
@@ -173,6 +175,15 @@
                 </div>
                 <div id="rewardsList" style="margin-top: 1.5rem;">
                     <!-- Custom rewards loaded here -->
+                </div>
+            </section>
+
+            <section id="feedbackSection" class="card" style="display:none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                    <h2 style="margin: 0;"><i data-feather="message-square"></i> Customer Feedback</h2>
+                </div>
+                <div id="feedbackList" style="margin-top: 1.5rem;">
+                    <!-- Feedback dynamically loaded here -->
                 </div>
             </section>
         </main>
